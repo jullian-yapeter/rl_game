@@ -65,4 +65,3 @@ class TargetYReward(Reward):
 
     def __call__(self, trajectories, shapes):
         return trajectories[:, 1, 0]
-

@@ -1,8 +1,8 @@
 import os
 
-from params import COMMON_PARAMS as CP
-from params import LINEAR_PARAMS as LP
-from params import U_LINEAR_PARAMS as ULP
+from models.basic_models.params import COMMON_PARAMS as CP
+from models.basic_models.params import LINEAR_PARAMS as LP
+from models.basic_models.params import U_LINEAR_PARAMS as ULP
 
 import torch as T
 import torch.nn as nn
@@ -14,11 +14,6 @@ class LinearNetwork(nn.Module):
                  chkpt_dir=CP.CHECKPOINT_DIR, chkpt_filename=LP.CHKPT_FILE):
 
         super(LinearNetwork, self).__init__()
-        self.checkpoint_file = os.path.join(chkpt_dir, chkpt_filename)
-        self.optimizer = optim.Adam(self.parameters(), lr=alpha)
-        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
-        self.to(self.device)
-
         linear_layers = []
         for i, llp in enumerate(linear_layer_params):
             linear_layers.append(nn.Linear(llp["in_dim"], llp["out_dim"]))
@@ -29,8 +24,13 @@ class LinearNetwork(nn.Module):
             *linear_layers
         )
 
-    def forward(self, state):
-        out = self.model(state)
+        self.checkpoint_file = os.path.join(chkpt_dir, chkpt_filename)
+        self.optimizer = optim.Adam(self.parameters(), lr=alpha)
+        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+        self.to(self.device)
+
+    def forward(self, x):
+        out = self.model(x.to(self.device))
         return out
 
 
@@ -38,16 +38,15 @@ class UniformLinearNetwork(nn.Module):
     def __init__(self, input_dim, output_dim=ULP.OUTPUT_DIM, num_layers=ULP.NUM_LAYERS, alpha=ULP.LEARNING_RATE,
                  chkpt_dir=CP.CHECKPOINT_DIR, chkpt_filename=ULP.CHKPT_FILE):
 
-        super(LinearNetwork, self).__init__()
+        super(UniformLinearNetwork, self).__init__()
+        linear_layer_params = ULP.generate_uniform_linear_layers(input_dim, output_dim, num_layers)
+        self.l_net = LinearNetwork(linear_layer_params, alpha=alpha)
+
         self.checkpoint_file = os.path.join(chkpt_dir, chkpt_filename)
         self.optimizer = optim.Adam(self.parameters(), lr=alpha)
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
-        linear_layer_params = ULP.generate_uniform_linear_layers(input_dim, output_dim, num_layers)
-        self.l_net = LinearNetwork(linear_layer_params, alpha=alpha,
-                                   chkpt_dir=chkpt_dir, chkpt_filename=chkpt_filename)
-
-    def forward(self, state):
-        out = self.l_net(state)
+    def forward(self, x):
+        out = self.l_net(x.to(self.device))
         return out

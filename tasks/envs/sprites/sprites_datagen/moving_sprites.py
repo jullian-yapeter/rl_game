@@ -2,9 +2,9 @@ import numpy as np
 import cv2
 from torch.utils.data import Dataset
 
-from general_utils import AttrDict
-from sprites_datagen.utils.template_blender import TemplateBlender
-from sprites_datagen.utils.trajectory import ConstantSpeedTrajectory
+from utils.general_utils import AttrDict
+from envs.sprites.sprites_datagen.utils.template_blender import TemplateBlender
+from envs.sprites.sprites_datagen.utils.trajectory import ConstantSpeedTrajectory
 
 
 class MovingSpriteDataset(Dataset):

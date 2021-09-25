@@ -10,7 +10,7 @@ class LINEAR_PARAMS:
 
 
 # Linear module default params
-class UNIFORM_LINEAR_PARAMS:
+class U_LINEAR_PARAMS:
     LEARNING_RATE = 0.001
     OUTPUT_DIM = 64
     NUM_LAYERS = 3
@@ -27,6 +27,7 @@ class UNIFORM_LINEAR_PARAMS:
             linear_layer["in_dim"] = output_dim
             linear_layer["out_dim"] = output_dim
             linear_layers.append(linear_layer)
+        return linear_layers
 
 
 # Convolutional encoder default params
@@ -57,3 +58,4 @@ class D_CONV_ENCODER_PARAMS:
             conv_layers.append(conv_layer)
             c *= 2
             sl /= 2
+        return conv_layers
