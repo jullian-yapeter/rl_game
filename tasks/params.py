@@ -27,3 +27,14 @@ class REWIRL_TRAINER_PARAMS:
     NUM_DISTRACTORS = 0
     EPOCHS = 1000
     BATCH_SIZE = 30
+
+
+# Rewirl trainer default params
+class REWIRL_TESTER_PARAMS:
+    REWARD_TYPES = [AgentXReward, AgentYReward, TargetXReward, TargetYReward]
+    IM_DIM = 64
+    SEQ_LEN = 10
+    MAX_SPEED = 0.05
+    OBJ_SIZE = 0.2
+    NUM_DISTRACTORS = 0
+    TRIALS = 10

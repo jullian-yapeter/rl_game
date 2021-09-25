@@ -5,9 +5,10 @@ from utils.general_utils import AttrDict
 from params import COMMON_PARAMS as CP
 from params import REWIRL_AGENT_PARAMS as RAP
 from params import REWIRL_TRAINER_PARAMS as RTP
+from params import REWIRL_TESTER_PARAMS as RTEP
 from models.im_encoder import ImageEncoderNetwork
 from models.reward_head import RewardHeadNetwork
-from utils.model_utils import shuffled_indices, save_checkpoint
+from utils.model_utils import shuffled_indices, save_checkpoint, load_checkpoint
 
 import numpy as np
 import torch as T
@@ -98,6 +99,7 @@ class RewirlTrainer():
 
     def save_models(self):
         print("...saving models...")
+        save_checkpoint(self.ra)
         save_checkpoint(self.ra.im_enc, task_name=self.task_name)
         for reward_name in self.reward_names:
             save_checkpoint(self.ra.rew_heads[reward_name], task_name=self.task_name)
@@ -108,6 +110,55 @@ class RewirlTrainer():
         return images[:, None].astype(np.float32) / (255./2) - 1.0
 
 
+class RewirlTester():
+    def __init__(self, im_dim=RTEP.IM_DIM, seq_len=RTEP.SEQ_LEN, max_speed=RTEP.MAX_SPEED, obj_size=RTEP.OBJ_SIZE,
+                 num_distractors=RTEP.NUM_DISTRACTORS, reward_types=RTEP.REWARD_TYPES,
+                 num_trials=RTEP.TRIALS):
+        self.num_trials = num_trials
+        self.im_dims = (1, 1, im_dim, im_dim)
+        self.reward_names = [r.NAME for r in reward_types]
+        self.spec = AttrDict(
+            resolution=im_dim,
+            max_seq_len=seq_len,
+            max_speed=max_speed,
+            obj_size=obj_size,
+            shapes_per_traj=2 + num_distractors,      # number of shapes per trajectory
+            rewards=reward_types,
+        )
+        self.gen = DistractorTemplateMovingSpritesGenerator(self.spec)
+        self.ra = RewirlAgent(self.im_dims, self.reward_names)
+        load_checkpoint(self.ra)
+        self.ra.eval()
+        self.loss_fn = F.mse_loss
+
+        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+
+    def test(self):
+        losses = []
+        for i in range(self.num_trials):
+            traj = self.gen.gen_trajectory()
+            images = RewirlTrainer._preprocess_images(traj.images)
+            test_data = T.tensor(images)
+            total_loss = 0
+            for reward_name in self.reward_names:
+                rewards = traj.rewards.get(reward_name)
+                test_label = T.tensor(rewards)
+                pred_label = self.ra(test_data, reward_name)
+                loss = self.loss_fn(T.squeeze(pred_label).to(self.device), test_label.to(self.device), reduction="sum")
+                total_loss += loss
+            losses.append(total_loss.item())
+        print(f"average loss:{np.mean(losses)}")
+        plt.plot(losses)
+        plt.show()
+
+    @staticmethod
+    # Go from (N, H, W) of [0, 255] to (N, 1, H, W) of [-1, 1]
+    def _preprocess_images(images):
+        return images[:, None].astype(np.float32) / (255./2) - 1.0
+
+
 if __name__ == "__main__":
-    rt = RewirlTrainer()
-    rt.train()
+    rtr = RewirlTrainer()
+    rtr.train()
+    rte = RewirlTester()
+    rte.test()
