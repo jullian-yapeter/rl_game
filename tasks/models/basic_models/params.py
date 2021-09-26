@@ -1,3 +1,6 @@
+import torch.nn as nn
+
+
 # Common default params
 class COMMON_PARAMS:
     CHECKPOINT_DIR = "saved_models"
@@ -7,6 +10,7 @@ class COMMON_PARAMS:
 class LINEAR_PARAMS:
     LEARNING_RATE = 0.001
     CHKPT_FILE = "linear"
+    ACTIVATION = nn.ReLU()
 
 
 # Linear module default params
@@ -15,6 +19,7 @@ class U_LINEAR_PARAMS:
     OUTPUT_DIM = 64
     NUM_LAYERS = 3
     CHKPT_FILE = "u_linear"
+    ACTIVATION = nn.ReLU()
 
     @staticmethod
     def generate_uniform_linear_layers(input_dim, output_dim, num_layers):
@@ -35,6 +40,7 @@ class CONV_ENCODER_PARAMS:
     LEARNING_RATE = 0.001
     OUTPUT_DIM = 64
     CHKPT_FILE = "conv_encoder"
+    ACTIVATION = nn.ReLU()
 
 
 # Doubling convolutional encoder default params
@@ -42,6 +48,7 @@ class D_CONV_ENCODER_PARAMS:
     LEARNING_RATE = 0.001
     OUTPUT_DIM = 64
     CHKPT_FILE = "d_conv_encoder"
+    ACTIVATION = nn.ReLU()
 
     @staticmethod
     def generate_doubling_conv_layers(channels, side_len):

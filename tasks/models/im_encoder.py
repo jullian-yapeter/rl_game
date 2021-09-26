@@ -12,12 +12,14 @@ import torch.optim as optim
 
 class ImageEncoderNetwork(nn.Module):
     def __init__(self, input_dims, output_dim=IEP.OUTPUT_DIM,
-                 alpha=IEP.LEARNING_RATE, num_linear_layers=IEP.NUM_LINEAR_LAYERS,
-                 chkpt_dir=CP.CHECKPOINT_DIR, chkpt_filename=IEP.CHKPT_FILE):
-
+                 alpha=IEP.LEARNING_RATE, activation=IEP.ACTIVATION,
+                 num_linear_layers=IEP.NUM_LINEAR_LAYERS, chkpt_dir=CP.CHECKPOINT_DIR, chkpt_filename=IEP.CHKPT_FILE):
         super(ImageEncoderNetwork, self).__init__()
-        self.conv_enc = DoublingConvEncoderNetwork(input_dims, output_dim=output_dim, alpha=alpha)
-        self.linear = UniformLinearNetwork(output_dim, output_dim=output_dim, num_layers=num_linear_layers, alpha=alpha)
+        self.activation = activation
+        self.conv_enc = DoublingConvEncoderNetwork(input_dims, output_dim=output_dim,
+                                                   alpha=alpha, activation=self.activation)
+        self.linear = UniformLinearNetwork(output_dim, output_dim=output_dim, num_layers=num_linear_layers,
+                                           alpha=alpha, activation=self.activation)
 
         self.checkpoint_file = os.path.join(chkpt_dir, chkpt_filename)
         self.optimizer = optim.Adam(self.parameters(), lr=alpha)

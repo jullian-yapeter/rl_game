@@ -6,7 +6,7 @@ class COMMON_PARAMS:
     CHECKPOINT_DIR = "saved_models"
 
 
-# Image encoder default params
+# Reward-Induced Representation RL (Rewirl) Agent default params
 class REWIRL_AGENT_PARAMS:
     LEARNING_RATE = 0.001
     ENC_OUTPUT_DIM = 64
@@ -25,7 +25,7 @@ class REWIRL_TRAINER_PARAMS:
     MAX_SPEED = 0.05
     OBJ_SIZE = 0.2
     NUM_DISTRACTORS = 0
-    EPOCHS = 1000
+    EPOCHS = 10
     BATCH_SIZE = 30
 
 
@@ -38,3 +38,14 @@ class REWIRL_TESTER_PARAMS:
     OBJ_SIZE = 0.2
     NUM_DISTRACTORS = 0
     TRIALS = 10
+
+
+# State-based PPO agent default params
+class STATE_PPO_PARAMS:
+    TASK_NAME = "PPO"
+    NUM_ACTIONS = 5
+    ACT_LR = 0.0001
+    CRIT_LR = 0.001
+    GAMMA = 0.99
+    GAE_LAMBDA = 0.95
+    POL_CLIP = 0.2

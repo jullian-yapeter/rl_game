@@ -10,15 +10,15 @@ import torch.optim as optim
 
 
 class LinearNetwork(nn.Module):
-    def __init__(self, linear_layer_params, alpha=LP.LEARNING_RATE,
+    def __init__(self, linear_layer_params, alpha=LP.LEARNING_RATE, activation=LP.ACTIVATION,
                  chkpt_dir=CP.CHECKPOINT_DIR, chkpt_filename=LP.CHKPT_FILE):
-
         super(LinearNetwork, self).__init__()
+        self.activation = activation
         linear_layers = []
         for i, llp in enumerate(linear_layer_params):
             linear_layers.append(nn.Linear(llp["in_dim"], llp["out_dim"]))
             if i < len(linear_layer_params) - 1:
-                linear_layers.append(nn.ReLU())
+                linear_layers.append(self.activation)
 
         self.model = nn.Sequential(
             *linear_layers
@@ -35,12 +35,13 @@ class LinearNetwork(nn.Module):
 
 
 class UniformLinearNetwork(nn.Module):
-    def __init__(self, input_dim, output_dim=ULP.OUTPUT_DIM, num_layers=ULP.NUM_LAYERS, alpha=ULP.LEARNING_RATE,
+    def __init__(self, input_dim, output_dim=ULP.OUTPUT_DIM, num_layers=ULP.NUM_LAYERS,
+                 alpha=ULP.LEARNING_RATE, activation=ULP.ACTIVATION,
                  chkpt_dir=CP.CHECKPOINT_DIR, chkpt_filename=ULP.CHKPT_FILE):
-
         super(UniformLinearNetwork, self).__init__()
+        self.activation = activation
         linear_layer_params = ULP.generate_uniform_linear_layers(input_dim, output_dim, num_layers)
-        self.l_net = LinearNetwork(linear_layer_params, alpha=alpha)
+        self.l_net = LinearNetwork(linear_layer_params, alpha=alpha, activation=self.activation)
 
         self.checkpoint_file = os.path.join(chkpt_dir, chkpt_filename)
         self.optimizer = optim.Adam(self.parameters(), lr=alpha)
