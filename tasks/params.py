@@ -44,24 +44,24 @@ class REWIRL_TESTER_PARAMS:
 class STATE_PPO_PARAMS:
     TASK_NAME = "PPO"
     NUM_ACTIONS = 5
-    ACT_LR = 0.0001
-    CRIT_LR = 0.001
+    ACT_LR = 0.0003
+    CRIT_LR = 0.0003
     GAMMA = 0.99
     GAE_LAMBDA = 0.95
-    POL_CLIP = 0.2
+    POL_CLIP = 0.1
 
 
 # State-based PPO trainer default params
 class STATE_PPO_TRAINER_PARAMS:
     TASK_NAME = "PPO"
     ENV_NAME = 'envs.sprites.sprites_env:SpritesState-v0'
-    NUM_GAMES = 10000
+    NUM_GAMES = 3000
     STATE_DIM = 4
     RESOLUTION = 64
     MAX_EP_LEN = 2049
     OBJ_SIZE = 0.2
     SPEED = 0.05
-    BATCH_SIZE = 64
+    BATCH_SIZE = 256
     EPOCHS = 10
-    LEARN_TRIGGER = 192
+    LEARN_TRIGGER = 2048
     FIG_FILE = "plots/state_ppo.png"

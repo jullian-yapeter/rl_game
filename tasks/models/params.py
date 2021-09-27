@@ -30,8 +30,8 @@ class STATE_ACTOR_PARAMS:
     LEARNING_RATE = 0.001
     IN_ACTIVATION = nn.Tanh()
     OUT_ACTIVATION = nn.Softmax(dim=-1)
-    HIDDEN_DIM = 64
-    NUM_ACTIONS = 5
+    HIDDEN_DIM = 32
+    NUM_ACTIONS = 4
     NUM_LAYERS = 3
     CHKPT_FILE = "st_actor"
 
@@ -40,6 +40,6 @@ class STATE_ACTOR_PARAMS:
 class STATE_CRITIC_PARAMS:
     LEARNING_RATE = 0.001
     ACTIVATION = nn.ReLU()
-    HIDDEN_DIM = 64
+    HIDDEN_DIM = 32
     NUM_LAYERS = 3
     CHKPT_FILE = "st_critic"

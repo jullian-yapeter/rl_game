@@ -74,17 +74,22 @@ class StatePPOAgent():
         load_checkpoint(self.actor, task_name=self.task_name)
         load_checkpoint(self.critic, task_name=self.task_name)
 
-    def choose_action(self, state):
+    def choose_action(self, state, eps=0.2):
         value = self.critic(state)
         act_probs = self.actor(state)
-        dist = Categorical(act_probs)
-        action = dist.sample()
-
-        probs = T.squeeze(dist.log_prob(action)).item()
+        p = np.random.rand()
+        if p > eps:
+            action = T.argmax(act_probs)
+            prob = T.log(act_probs[0, action])
+        else:
+            dist = Categorical(act_probs)
+            action = dist.sample()
+            prob = dist.log_prob(action)
+        prob = T.squeeze(prob).item()
         action = T.squeeze(action).item()
         value = T.squeeze(value).item()
 
-        return action, probs, value
+        return action, prob, value
 
 
 class StatePPOTrainer():
@@ -97,10 +102,10 @@ class StatePPOTrainer():
         self.epochs = epochs
         self.learn_trigger = learn_trigger
         self.ppo_memory = PPOMemory(batch_size)
-        self.action_dict = [[0, 0], [speed, 0],
-                            [0, -speed],
-                            [-speed, 0],
-                            [0, speed]]
+        self.action_dict = [[1, 0],
+                            [0, -1],
+                            [-1, 0],
+                            [0, 1]]
         self.st_ppo_agent = StatePPOAgent(state_dim, len(self.action_dict))
         self.data_spec = AttrDict(
             resolution=resolution,
@@ -163,10 +168,12 @@ class StatePPOTrainer():
             done = False
             score = 0
             while not done:
-                action, prob, val = self.st_ppo_agent.choose_action(T.tensor([state], dtype=T.float))
+                action, prob, val = self.st_ppo_agent.choose_action(T.tensor([state], dtype=T.float),
+                                                                    eps=1 - (i / self.num_games))
                 state_, reward, done, _, im = self.env.step(self.action_dict[action])
-                # cv2.imshow("1", im[:, :, None].repeat(3, axis=2).astype(np.float32) * 255.)
-                # cv2.waitKey(500)
+                if i % 100 == 0:
+                    cv2.imshow("1", im[:, :, None].repeat(3, axis=2).astype(np.float32) * 255.)
+                    cv2.waitKey(5)
                 n_steps += 1
                 score += reward
                 self.ppo_memory.store_memory(state, action, prob, val, reward, done)
@@ -175,13 +182,13 @@ class StatePPOTrainer():
                     learn_iters += 1
                 state = state_
             score_history.append(score)
-            avg_score = np.mean(score_history[-100:])
+            avg_score = np.mean(score_history[-10:])
             if avg_score > best_score:
                 best_score = avg_score
                 self.st_ppo_agent.save_models()
 
-            print(f"episode: {i}, score: {score}, avg score: {avg_score}, \
-                time_steps: {n_steps}, learning_steps: {learn_iters}")
+            print(f"episode: {i}, score: {score}, avg score: {avg_score},\
+                  time_steps: {n_steps}, learning_steps: {learn_iters}")
 
         x = [i+1 for i in range(len(score_history))]
         plot_learning_curve(x, score_history, self.figure_file)
