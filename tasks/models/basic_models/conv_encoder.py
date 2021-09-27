@@ -33,7 +33,8 @@ class ConvEncoderNetwork(nn.Module):
         self.to(self.device)
 
     def forward(self, x):
-        out = self.model(x.to(self.device))
+        x.to(self.device)
+        out = self.model(x)
         return out
 
 
@@ -51,5 +52,6 @@ class DoublingConvEncoderNetwork(nn.Module):
         self.to(self.device)
 
     def forward(self, x):
-        out = self.conv_enc(x.to(self.device))
+        x.to(self.device)
+        out = self.conv_enc(x)
         return out

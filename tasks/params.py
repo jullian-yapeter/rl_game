@@ -49,3 +49,19 @@ class STATE_PPO_PARAMS:
     GAMMA = 0.99
     GAE_LAMBDA = 0.95
     POL_CLIP = 0.2
+
+
+# State-based PPO trainer default params
+class STATE_PPO_TRAINER_PARAMS:
+    TASK_NAME = "PPO"
+    ENV_NAME = 'envs.sprites.sprites_env:SpritesState-v0'
+    NUM_GAMES = 10000
+    STATE_DIM = 4
+    RESOLUTION = 64
+    MAX_EP_LEN = 2049
+    OBJ_SIZE = 0.2
+    SPEED = 0.05
+    BATCH_SIZE = 64
+    EPOCHS = 10
+    LEARN_TRIGGER = 192
+    FIG_FILE = "plots/state_ppo.png"

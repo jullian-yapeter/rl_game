@@ -3,8 +3,8 @@ from gym.spaces import Box
 import numpy as np
 import cv2
 import os
-from general_utils import AttrDict
-from sprites_datagen.utils.template_blender import TemplateBlender
+from utils.general_utils import AttrDict
+from envs.sprites.sprites_datagen.utils.template_blender import TemplateBlender
 
 
 class SpritesEnv(gym.Env):
@@ -192,8 +192,8 @@ class SpritesStateEnv(SpritesEnv):
         return self._state[:, :self._n_dim].copy().flatten()
 
     def step(self, action):
-        _, reward, done, info = super().step(action)
-        return self._state[:, :self._n_dim].copy().flatten(), reward, done, info
+        im, reward, done, info = super().step(action)
+        return self._state[:, :self._n_dim].copy().flatten(), reward, done, info, im
 
 
 class SpritesRepelEnv(SpritesEnv):

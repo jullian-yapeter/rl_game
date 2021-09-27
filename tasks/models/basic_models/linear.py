@@ -30,7 +30,8 @@ class LinearNetwork(nn.Module):
         self.to(self.device)
 
     def forward(self, x):
-        out = self.model(x.to(self.device))
+        x.to(self.device)
+        out = self.model(x)
         return out
 
 
@@ -49,5 +50,6 @@ class UniformLinearNetwork(nn.Module):
         self.to(self.device)
 
     def forward(self, x):
-        out = self.l_net(x.to(self.device))
+        x.to(self.device)
+        out = self.l_net(x)
         return out

@@ -27,6 +27,7 @@ class ImageEncoderNetwork(nn.Module):
         self.to(self.device)
 
     def forward(self, x):
-        features = self.conv_enc(x.to(self.device))
+        x.to(self.device)
+        features = self.conv_enc(x)
         out = self.linear(features)
         return out
