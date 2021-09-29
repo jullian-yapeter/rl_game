@@ -1,5 +1,6 @@
 from params import STATE_PPO_PARAMS as SPP
 from params import STATE_PPO_TRAINER_PARAMS as SPTP
+from params import STATE_PPO_TESTER_PARAMS as SPTEP
 from models.actor import StateActor
 from models.critic import StateCritic
 from utils.general_utils import AttrDict
@@ -93,19 +94,18 @@ class StatePPOAgent():
 
 
 class StatePPOTrainer():
-    def __init__(self, env_name=SPTP.ENV_NAME, state_dim=SPTP.STATE_DIM, resolution=SPTP.RESOLUTION,
-                 max_ep_len=SPTP.MAX_EP_LEN, obj_size=SPTP.OBJ_SIZE, speed=SPTP.SPEED, num_games=SPTP.NUM_GAMES,
-                 batch_size=SPTP.BATCH_SIZE, epochs=SPTP.EPOCHS, learn_trigger=SPTP.LEARN_TRIGGER,
+    def __init__(self, task_name=SPTP.TASK_NAME, env_name=SPTP.ENV_NAME, state_dim=SPTP.STATE_DIM,
+                 action_dict=SPTP.ACT_DICT, resolution=SPTP.RESOLUTION, max_ep_len=SPTP.MAX_EP_LEN,
+                 obj_size=SPTP.OBJ_SIZE, speed=SPTP.SPEED, num_games=SPTP.NUM_GAMES, batch_size=SPTP.BATCH_SIZE,
+                 epochs=SPTP.EPOCHS, learn_trigger=SPTP.LEARN_TRIGGER, avg_window=SPTP.AVG_WINDOW,
                  figure_file=SPTP.FIG_FILE):
+        self.task_name = task_name
         self.num_games = num_games
         self.batch_size = batch_size
         self.epochs = epochs
         self.learn_trigger = learn_trigger
         self.ppo_memory = PPOMemory(batch_size)
-        self.action_dict = [[1, 0],
-                            [0, -1],
-                            [-1, 0],
-                            [0, 1]]
+        self.action_dict = action_dict
         self.st_ppo_agent = StatePPOAgent(state_dim, len(self.action_dict))
         self.data_spec = AttrDict(
             resolution=resolution,
@@ -116,6 +116,7 @@ class StatePPOTrainer():
         )
         self.env = gym.make(env_name)
         self.env.set_config(self.data_spec)
+        self.avg_window = avg_window
         self.figure_file = figure_file
 
     def learn(self):
@@ -172,7 +173,7 @@ class StatePPOTrainer():
                                                                     eps=1 - (i / self.num_games))
                 state_, reward, done, _, im = self.env.step(self.action_dict[action])
                 if i % 100 == 0:
-                    cv2.imshow("1", im[:, :, None].repeat(3, axis=2).astype(np.float32) * 255.)
+                    cv2.imshow(self.task_name, im[:, :, None].repeat(3, axis=2).astype(np.float32) * 255.)
                     cv2.waitKey(5)
                 n_steps += 1
                 score += reward
@@ -182,20 +183,69 @@ class StatePPOTrainer():
                     learn_iters += 1
                 state = state_
             score_history.append(score)
-            avg_score = np.mean(score_history[-10:])
+            avg_score = np.mean(score_history[-self.avg_window:])
             if avg_score > best_score:
                 best_score = avg_score
                 self.st_ppo_agent.save_models()
 
             print(f"episode: {i}, score: {score}, avg score: {avg_score},\
                   time_steps: {n_steps}, learning_steps: {learn_iters}")
+            plot_learning_curve([i+1 for i in range(len(score_history))], score_history,
+                                self.avg_window, self.figure_file)
 
-        x = [i+1 for i in range(len(score_history))]
-        plot_learning_curve(x, score_history, self.figure_file)
+
+class StatePPOTester():
+    def __init__(self, task_name=SPTP.TASK_NAME, env_name=SPTEP.ENV_NAME, state_dim=SPTEP.STATE_DIM,
+                 action_dict=SPTEP.ACT_DICT, resolution=SPTEP.RESOLUTION, max_ep_len=SPTEP.MAX_EP_LEN,
+                 obj_size=SPTEP.OBJ_SIZE, speed=SPTEP.SPEED, num_games=SPTEP.NUM_GAMES, avg_window=SPTEP.AVG_WINDOW,
+                 show=SPTEP.SHOW, figure_file=SPTEP.FIG_FILE):
+        self.task_name = task_name
+        self.num_games = num_games
+        self.action_dict = action_dict
+        self.data_spec = AttrDict(
+            resolution=resolution,
+            max_ep_len=max_ep_len,
+            max_speed=speed,  # total image range [0, 1]
+            obj_size=obj_size,  # size of objects, full images is 1.0
+            follow=True
+        )
+        self.env = gym.make(env_name)
+        self.env.set_config(self.data_spec)
+        self.avg_window = avg_window
+        self.figure_file = figure_file
+        self.show = show
+
+        self.actor = StateActor(state_dim, output_dim=len(self.action_dict))
+        load_checkpoint(self.actor, task_name=self.task_name)
+        self.actor.eval()
+
+    def test(self):
+        score_history = []
+
+        for i in range(self.num_games):
+            state = self.env.reset()
+            done = False
+            score = 0
+            while not done:
+                with T.no_grad():
+                    act_probs = self.actor(T.tensor([state], dtype=T.float))
+                    action = T.argmax(act_probs)
+                state, reward, done, _, im = self.env.step(self.action_dict[action])
+                if self.show:
+                    cv2.imshow(self.task_name, im[:, :, None].repeat(3, axis=2).astype(np.float32) * 255.)
+                    cv2.waitKey(10)
+                score += reward
+            score_history.append(score)
+            avg_score = np.mean(score_history[-self.avg_window:])
+
+            print(f"episode: {i}, score: {score}, avg score: {avg_score}")
+            plot_learning_curve([i+1 for i in range(len(score_history))], score_history,
+                                self.avg_window, self.figure_file)
 
 
 if __name__ == "__main__":
-    spt = StatePPOTrainer()
-    spt.train()
+    spt = StatePPOTester()
+    spt.test()
+    # spt.train()
     # print(spt.st_ppo_agent.actor)
     # print(spt.st_ppo_agent.critic)
