@@ -48,7 +48,7 @@ class RewirlAgent(nn.Module):
 class RewirlTrainer():
     def __init__(self, im_dim=RTP.IM_DIM, max_speed=RTP.MAX_SPEED, obj_size=RTP.OBJ_SIZE,
                  num_distractors=RTP.NUM_DISTRACTORS, reward_types=RTP.REWARD_TYPES,
-                 epochs=RTP.EPOCHS, batch_size=RTP.BATCH_SIZE):
+                 epochs=RTP.EPOCHS, batch_size=RTP.BATCH_SIZE, window=RTP.WINDOW, figure_file=RTP.FIG_FILE):
         self.task_name = RTP.TASK_NAME
         self.im_dims = (1, 1, im_dim, im_dim)
         self.reward_names = [r.NAME for r in reward_types]
@@ -66,6 +66,8 @@ class RewirlTrainer():
         self.loss_fn = F.mse_loss
 
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+        self.figure_file = figure_file
+        self.window = window
 
     def train(self):
         best_loss = float('inf')
@@ -85,17 +87,18 @@ class RewirlTrainer():
                 loss = self.loss_fn(T.squeeze(pred_label).to(self.device), train_label.to(self.device), reduction="sum")
                 total_loss += loss
             losses.append(total_loss.item())
-            avg_loss = np.mean(losses[-100:])
+            avg_loss = np.mean(losses[-self.window:])
             if avg_loss < best_loss:
                 self.save_models()
                 best_loss = avg_loss
-            if i % 100 == 0:
+            if i % self.window == 0:
                 print(f"iter = {i}, loss = {total_loss}, avg_loss = {avg_loss}")
+                plt.plot(losses)
+                plt.title("Visual representation losses")
+                plt.savefig(self.figure_file)
             self.ra.optimizer.zero_grad()
             total_loss.backward()
             self.ra.optimizer.step()
-        plt.plot(losses)
-        plt.show()
 
     def save_models(self):
         print("...saving models...")
@@ -113,7 +116,7 @@ class RewirlTrainer():
 class RewirlTester():
     def __init__(self, im_dim=RTEP.IM_DIM, seq_len=RTEP.SEQ_LEN, max_speed=RTEP.MAX_SPEED, obj_size=RTEP.OBJ_SIZE,
                  num_distractors=RTEP.NUM_DISTRACTORS, reward_types=RTEP.REWARD_TYPES,
-                 num_trials=RTEP.TRIALS):
+                 num_trials=RTEP.TRIALS, figure_file=RTEP.FIG_FILE):
         self.num_trials = num_trials
         self.im_dims = (1, 1, im_dim, im_dim)
         self.reward_names = [r.NAME for r in reward_types]
@@ -132,6 +135,7 @@ class RewirlTester():
         self.loss_fn = F.mse_loss
 
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+        self.figure_file = figure_file
 
     def test(self):
         losses = []
@@ -144,12 +148,15 @@ class RewirlTester():
                 rewards = traj.rewards.get(reward_name)
                 test_label = T.tensor(rewards)
                 pred_label = self.ra(test_data, reward_name)
+                print(f"test: {test_label}")
+                print(f"pred: {pred_label}")
                 loss = self.loss_fn(T.squeeze(pred_label).to(self.device), test_label.to(self.device), reduction="sum")
                 total_loss += loss
             losses.append(total_loss.item())
         print(f"average loss:{np.mean(losses)}")
         plt.plot(losses)
-        plt.show()
+        plt.title("Visual representation losses")
+        plt.savefig(self.figure_file)
 
     @staticmethod
     # Go from (N, H, W) of [0, 255] to (N, 1, H, W) of [-1, 1]
@@ -160,5 +167,5 @@ class RewirlTester():
 if __name__ == "__main__":
     rtr = RewirlTrainer()
     rtr.train()
-    rte = RewirlTester()
-    rte.test()
+    # rte = RewirlTester()
+    # rte.test()
