@@ -192,7 +192,7 @@ class SpritesStateEnv(SpritesEnv):
         return self._state[:, :self._n_dim].copy().flatten()
 
     def step(self, action):
-        im, reward, done, info = super().step(action)
+        im, reward, done, info, _ = super().step(action)
         return self._state[:, :self._n_dim].copy().flatten(), reward, done, info, im
 
 

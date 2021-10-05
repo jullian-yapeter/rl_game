@@ -32,3 +32,4 @@ def plot_learning_curve(x, scores, window, figure_file):
     plt.plot(x, running_avg)
     plt.title(f"Running average of previous {window} scores")
     plt.savefig(figure_file)
+    plt.clf()

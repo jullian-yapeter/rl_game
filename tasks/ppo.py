@@ -1,9 +1,8 @@
 from params import STATE_PPO_PARAMS as SPP
 from params import STATE_PPO_TRAINER_PARAMS as SPTP
 from params import STATE_PPO_TESTER_PARAMS as SPTEP
-# from params import VISUAL_PPO_PARAMS as VPP
 from params import VISUAL_PPO_TRAINER_PARAMS as VPTP
-# from params import VISUAL_PPO_TESTER_PARAMS as VPTEP
+from params import VISUAL_PPO_TESTER_PARAMS as VPTEP
 from models.actor import StateActor, VisualActor
 from models.critic import StateCritic, VisualCritic
 from utils.general_utils import AttrDict
@@ -57,7 +56,7 @@ class PPOMemory:
         self.values = []
 
 
-class StatePPOAgent():
+class PPOAgent():
     def __init__(self, input_dim, task_name=SPP.TASK_NAME, num_actions=SPP.NUM_ACTIONS,
                  a_alpha=SPP.ACT_LR, c_alpha=SPP.CRIT_LR,
                  gamma=SPP.GAMMA, gae_lambda=SPP.GAE_LAMBDA, policy_clip=SPP.POL_CLIP,
@@ -107,7 +106,7 @@ class StatePPOAgent():
         return action, prob, value
 
 
-class StatePPOTrainer():
+class PPOTrainer():
     def __init__(self, task_name=SPTP.TASK_NAME, env_name=SPTP.ENV_NAME, state_dim=SPTP.STATE_DIM,
                  action_dict=SPTP.ACT_DICT, resolution=SPTP.RESOLUTION, max_ep_len=SPTP.MAX_EP_LEN,
                  obj_size=SPTP.OBJ_SIZE, speed=SPTP.SPEED, num_games=SPTP.NUM_GAMES, batch_size=SPTP.BATCH_SIZE,
@@ -123,10 +122,10 @@ class StatePPOTrainer():
         self.ppo_memory = PPOMemory(batch_size)
         self.action_dict = action_dict
         self.use_encoder = use_encoder
-        self.st_ppo_agent = StatePPOAgent(state_dim, task_name=task_name, num_actions=len(self.action_dict),
-                                          use_encoder=use_encoder, enc_output_dim=enc_output_dim,
-                                          num_encoder_linear_layers=num_encoder_linear_layers,
-                                          load_encoder=load_encoder, retrain_encoder=retrain_encoder)
+        self.ppo_agent = PPOAgent(state_dim, task_name=task_name, num_actions=len(self.action_dict),
+                                  use_encoder=use_encoder, enc_output_dim=enc_output_dim,
+                                  num_encoder_linear_layers=num_encoder_linear_layers,
+                                  load_encoder=load_encoder, retrain_encoder=retrain_encoder)
         self.data_spec = AttrDict(
             resolution=resolution,
             max_ep_len=max_ep_len,
@@ -144,9 +143,9 @@ class StatePPOTrainer():
         for _ in range(self.epochs):
             states, actions, old_probs, values, rewards, dones, batches = self.ppo_memory.generate_batches()
             advantage = np.zeros(len(rewards), dtype=np.float32)
-            discount = self.st_ppo_agent.gamma * self.st_ppo_agent.gae_lambda
+            discount = self.ppo_agent.gamma * self.ppo_agent.gae_lambda
             for t in reversed(range(len(rewards)-1)):
-                delta_t = rewards[t] + self.st_ppo_agent.gamma * values[t+1] * (1 - int(dones[t])) - values[t]
+                delta_t = rewards[t] + self.ppo_agent.gamma * values[t+1] * (1 - int(dones[t])) - values[t]
                 advantage[t] = delta_t + discount * (1 - int(dones[t])) * advantage[t+1]
             advantage = T.tensor(advantage)
             values = T.tensor(values)
@@ -156,26 +155,26 @@ class StatePPOTrainer():
                 batch_old_probs = T.tensor(old_probs[batch])
                 batch_actions = T.tensor(actions[batch])
 
-                probs = self.st_ppo_agent.actor(batch_states)
-                critic_value = self.st_ppo_agent.critic(batch_states)
+                probs = self.ppo_agent.actor(batch_states)
+                critic_value = self.ppo_agent.critic(batch_states)
                 dist = Categorical(probs)
                 critic_value = T.squeeze(critic_value)
                 batch_new_probs = dist.log_prob(batch_actions)
                 prob_ratio = batch_new_probs.exp() / batch_old_probs.exp()
                 weighted_probs = advantage[batch] * prob_ratio
-                weighted_clipped_probs = T.clamp(prob_ratio, 1 - self.st_ppo_agent.policy_clip,
-                                                 1 + self.st_ppo_agent.policy_clip) * advantage[batch]
+                weighted_clipped_probs = T.clamp(prob_ratio, 1 - self.ppo_agent.policy_clip,
+                                                 1 + self.ppo_agent.policy_clip) * advantage[batch]
                 actor_loss = -T.min(weighted_probs, weighted_clipped_probs).mean()
                 returns = advantage[batch] + values[batch]
                 critic_loss = (returns - critic_value) ** 2
                 critic_loss = critic_loss.mean()
 
                 total_loss = actor_loss + 0.5 * critic_loss
-                self.st_ppo_agent.actor.optimizer.zero_grad()
-                self.st_ppo_agent.critic.optimizer.zero_grad()
+                self.ppo_agent.actor.optimizer.zero_grad()
+                self.ppo_agent.critic.optimizer.zero_grad()
                 total_loss.backward()
-                self.st_ppo_agent.actor.optimizer.step()
-                self.st_ppo_agent.critic.optimizer.step()
+                self.ppo_agent.actor.optimizer.step()
+                self.ppo_agent.critic.optimizer.step()
         self.ppo_memory.clear_memory()
 
     def train(self):
@@ -191,11 +190,11 @@ class StatePPOTrainer():
             score = 0
             while not done:
                 if self.use_encoder:
-                    state = StatePPOTrainer._preprocess_images(state)
+                    state = PPOTrainer._preprocess_images(state)
                     agent_input = T.tensor([state], dtype=T.float)
                 else:
                     agent_input = T.tensor([state], dtype=T.float)
-                action, prob, val = self.st_ppo_agent.choose_action(agent_input, eps=1 - (i / self.num_games))
+                action, prob, val = self.ppo_agent.choose_action(agent_input, eps=1 - (i / self.num_games))
                 state_, reward, done, _, im = self.env.step(self.action_dict[action])
                 if self.show_freq and (i % self.show_freq == 0):
                     cv2.imshow(self.task_name, im[:, :, None].repeat(3, axis=2).astype(np.float32) * 255.)
@@ -211,7 +210,7 @@ class StatePPOTrainer():
             avg_score = np.mean(score_history[-self.avg_window:])
             if avg_score > best_score:
                 best_score = avg_score
-                self.st_ppo_agent.save_models()
+                self.ppo_agent.save_models()
 
             print(f"episode: {i}, score: {score}, avg score: {avg_score},\
                   time_steps: {n_steps}, learning_steps: {learn_iters}")
@@ -224,11 +223,12 @@ class StatePPOTrainer():
         return images[None, :, :].astype(np.float32) * 2.0 - 1.0
 
 
-class StatePPOTester():
+class PPOTester():
     def __init__(self, task_name=SPTP.TASK_NAME, env_name=SPTEP.ENV_NAME, state_dim=SPTEP.STATE_DIM,
                  action_dict=SPTEP.ACT_DICT, resolution=SPTEP.RESOLUTION, max_ep_len=SPTEP.MAX_EP_LEN,
                  obj_size=SPTEP.OBJ_SIZE, speed=SPTEP.SPEED, num_games=SPTEP.NUM_GAMES, avg_window=SPTEP.AVG_WINDOW,
-                 show=SPTEP.SHOW, figure_file=SPTEP.FIG_FILE):
+                 show=SPTEP.SHOW, figure_file=SPTEP.FIG_FILE, use_encoder=SPTEP.USE_ENCODER,
+                 enc_output_dim=SPTEP.ENC_OUTPUT_DIM, num_encoder_linear_layers=SPTEP.NUM_ENC_LIN_LAYERS):
         self.task_name = task_name
         self.num_games = num_games
         self.action_dict = action_dict
@@ -245,7 +245,13 @@ class StatePPOTester():
         self.figure_file = figure_file
         self.show = show
 
-        self.actor = StateActor(state_dim, output_dim=len(self.action_dict))
+        self.use_encoder = use_encoder
+        if use_encoder:
+            self.actor = VisualActor(state_dim, output_dim=len(self.action_dict), enc_output_dim=enc_output_dim,
+                                     num_encoder_linear_layers=num_encoder_linear_layers,
+                                     load_encoder=True, retrain_encoder=False)
+        else:
+            self.actor = StateActor(state_dim, output_dim=len(self.action_dict))
         load_checkpoint(self.actor, task_name=self.task_name)
         self.actor.eval()
 
@@ -258,6 +264,8 @@ class StatePPOTester():
             score = 0
             while not done:
                 with T.no_grad():
+                    if self.use_encoder:
+                        state = PPOTrainer._preprocess_images(state)
                     act_probs = self.actor(T.tensor([state], dtype=T.float))
                     action = T.argmax(act_probs)
                 state, reward, done, _, im = self.env.step(self.action_dict[action])
@@ -274,7 +282,40 @@ class StatePPOTester():
 
 
 if __name__ == "__main__":
-    spt = StatePPOTrainer(task_name=VPTP.TASK_NAME, env_name=VPTP.ENV_NAME, state_dim=VPTP.STATE_DIM,
+    print_architecture = True
+    train_state_ppo = True
+    test_state_ppo = True
+    train_static_rewirl_ppo = True
+    test_static_rewirl_ppo = True
+    train_finetune_rewirl_ppo = True
+    test_finetune_rewirl_ppo = True
+
+    if train_state_ppo:
+        spt = PPOTrainer(task_name=SPTP.TASK_NAME, env_name=SPTP.ENV_NAME, state_dim=SPTP.STATE_DIM,
+                         action_dict=SPTP.ACT_DICT, resolution=SPTP.RESOLUTION, max_ep_len=SPTP.MAX_EP_LEN,
+                         obj_size=SPTP.OBJ_SIZE, speed=SPTP.SPEED, num_games=SPTP.NUM_GAMES, batch_size=SPTP.BATCH_SIZE,
+                         epochs=SPTP.EPOCHS, learn_trigger=SPTP.LEARN_TRIGGER, avg_window=SPTP.AVG_WINDOW,
+                         show_freq=SPTP.SHOW_FREQ, figure_file=SPTP.FIG_FILE, use_encoder=SPTP.USE_ENCODER,
+                         enc_output_dim=SPTP.ENC_OUTPUT_DIM, num_encoder_linear_layers=SPTP.NUM_ENC_LIN_LAYERS,
+                         load_encoder=SPTP.LOAD_ENC, retrain_encoder=SPTP.RETRAIN_ENC)
+        if print_architecture:
+            print(spt.ppo_agent.actor)
+            print(spt.ppo_agent.critic)
+        spt.train()
+
+    if test_state_ppo:
+        spte = PPOTester(task_name=SPTEP.TASK_NAME, env_name=SPTEP.ENV_NAME, state_dim=SPTEP.STATE_DIM,
+                         action_dict=SPTEP.ACT_DICT, resolution=SPTEP.RESOLUTION, max_ep_len=SPTEP.MAX_EP_LEN,
+                         obj_size=SPTEP.OBJ_SIZE, speed=SPTEP.SPEED, num_games=SPTEP.NUM_GAMES,
+                         avg_window=SPTEP.AVG_WINDOW, show=SPTEP.SHOW, figure_file=SPTEP.FIG_FILE,
+                         use_encoder=SPTEP.USE_ENCODER, enc_output_dim=SPTEP.ENC_OUTPUT_DIM,
+                         num_encoder_linear_layers=SPTEP.NUM_ENC_LIN_LAYERS)
+        if print_architecture:
+            print(spte.actor)
+        spte.test()
+
+    if train_static_rewirl_ppo:
+        srpt = PPOTrainer(task_name=VPTP.TASK_NAME, env_name=VPTP.ENV_NAME, state_dim=VPTP.STATE_DIM,
                           action_dict=VPTP.ACT_DICT, resolution=VPTP.RESOLUTION, max_ep_len=VPTP.MAX_EP_LEN,
                           obj_size=VPTP.OBJ_SIZE, speed=VPTP.SPEED, num_games=VPTP.NUM_GAMES,
                           batch_size=VPTP.BATCH_SIZE, epochs=VPTP.EPOCHS, learn_trigger=VPTP.LEARN_TRIGGER,
@@ -282,8 +323,18 @@ if __name__ == "__main__":
                           use_encoder=VPTP.USE_ENCODER, enc_output_dim=VPTP.ENC_OUTPUT_DIM,
                           num_encoder_linear_layers=VPTP.NUM_ENC_LIN_LAYERS, load_encoder=VPTP.LOAD_ENC,
                           retrain_encoder=VPTP.RETRAIN_ENC)
-    spt.train()
-    # spte = StatePPOTester()
-    # spte.test()
-    # print(spt.st_ppo_agent.actor)
-    # print(spt.st_ppo_agent.critic)
+        if print_architecture:
+            print(srpt.ppo_agent.actor)
+            print(srpt.ppo_agent.critic)
+        srpt.train()
+
+    if test_static_rewirl_ppo:
+        srpte = PPOTester(task_name=VPTEP.TASK_NAME, env_name=VPTEP.ENV_NAME, state_dim=VPTEP.STATE_DIM,
+                          action_dict=VPTEP.ACT_DICT, resolution=VPTEP.RESOLUTION, max_ep_len=VPTEP.MAX_EP_LEN,
+                          obj_size=VPTEP.OBJ_SIZE, speed=VPTEP.SPEED, num_games=VPTEP.NUM_GAMES,
+                          avg_window=VPTEP.AVG_WINDOW, show=VPTEP.SHOW, figure_file=VPTEP.FIG_FILE,
+                          use_encoder=VPTEP.USE_ENCODER, enc_output_dim=VPTEP.ENC_OUTPUT_DIM,
+                          num_encoder_linear_layers=VPTEP.NUM_ENC_LIN_LAYERS)
+        if print_architecture:
+            print(srpte.actor)
+        srpte.test()

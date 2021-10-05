@@ -88,7 +88,7 @@ class STATE_PPO_TRAINER_PARAMS:
 class STATE_PPO_TESTER_PARAMS:
     TASK_NAME = "PPO"
     ENV_NAME = 'envs.sprites.sprites_env:SpritesState-v0'
-    NUM_GAMES = 10
+    NUM_GAMES = 100
     STATE_DIM = 4
     ACT_DICT = [[1, 0], [0, -1], [-1, 0], [0, 1]]
     RESOLUTION = 64
@@ -97,6 +97,9 @@ class STATE_PPO_TESTER_PARAMS:
     SPEED = 0.05
     AVG_WINDOW = 10
     SHOW = True
+    USE_ENCODER = False
+    ENC_OUTPUT_DIM = None
+    NUM_ENC_LIN_LAYERS = None
     FIG_FILE = "plots/state_ppo_test.png"
 
 
@@ -139,13 +142,16 @@ class VISUAL_PPO_TRAINER_PARAMS:
 class VISUAL_PPO_TESTER_PARAMS:
     TASK_NAME = "VIS_PPO"
     ENV_NAME = 'envs.sprites.sprites_env:Sprites-v0'
-    NUM_GAMES = 10
-    STATE_DIM = 64
+    NUM_GAMES = 100
     ACT_DICT = [[1, 0], [0, -1], [-1, 0], [0, 1]]
     RESOLUTION = 64
+    STATE_DIM = (1, 1, RESOLUTION, RESOLUTION)
     MAX_EP_LEN = 2049
     OBJ_SIZE = 0.2
     SPEED = 0.05
     AVG_WINDOW = 10
     SHOW = True
+    USE_ENCODER = True
+    ENC_OUTPUT_DIM = 64
+    NUM_ENC_LIN_LAYERS = 1
     FIG_FILE = "plots/visual_ppo_test.png"
