@@ -96,7 +96,7 @@ class STATE_PPO_TESTER_PARAMS:
     OBJ_SIZE = 0.2
     SPEED = 0.05
     AVG_WINDOW = 10
-    SHOW = True
+    SHOW = False
     USE_ENCODER = False
     ENC_OUTPUT_DIM = None
     NUM_ENC_LIN_LAYERS = None

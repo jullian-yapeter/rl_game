@@ -249,7 +249,7 @@ class PPOTester():
         if use_encoder:
             self.actor = VisualActor(state_dim, output_dim=len(self.action_dict), enc_output_dim=enc_output_dim,
                                      num_encoder_linear_layers=num_encoder_linear_layers,
-                                     load_encoder=True, retrain_encoder=False)
+                                     load_encoder=False, retrain_encoder=False)
         else:
             self.actor = StateActor(state_dim, output_dim=len(self.action_dict))
         load_checkpoint(self.actor, task_name=self.task_name)
@@ -283,12 +283,14 @@ class PPOTester():
 
 if __name__ == "__main__":
     print_architecture = True
-    train_state_ppo = True
-    test_state_ppo = True
-    train_static_rewirl_ppo = True
-    test_static_rewirl_ppo = True
-    train_finetune_rewirl_ppo = True
-    test_finetune_rewirl_ppo = True
+    train_state_ppo = False
+    test_state_ppo = False
+    train_scratch_ppo = True
+    test_scratch_ppo = False
+    train_static_rewirl_ppo = False
+    test_static_rewirl_ppo = False
+    train_finetune_rewirl_ppo = False
+    test_finetune_rewirl_ppo = False
 
     if train_state_ppo:
         spt = PPOTrainer(task_name=SPTP.TASK_NAME, env_name=SPTP.ENV_NAME, state_dim=SPTP.STATE_DIM,
@@ -314,6 +316,32 @@ if __name__ == "__main__":
             print(spte.actor)
         spte.test()
 
+    if train_scratch_ppo:
+        srpt = PPOTrainer(task_name=f"{VPTP.TASK_NAME}_SCRATCH", env_name=VPTP.ENV_NAME, state_dim=VPTP.STATE_DIM,
+                          action_dict=VPTP.ACT_DICT, resolution=VPTP.RESOLUTION, max_ep_len=VPTP.MAX_EP_LEN,
+                          obj_size=VPTP.OBJ_SIZE, speed=VPTP.SPEED, num_games=VPTP.NUM_GAMES,
+                          batch_size=VPTP.BATCH_SIZE, epochs=VPTP.EPOCHS, learn_trigger=VPTP.LEARN_TRIGGER,
+                          avg_window=VPTP.AVG_WINDOW, show_freq=VPTP.SHOW_FREQ,
+                          figure_file="plots/visual_scratch_ppo.png",
+                          use_encoder=VPTP.USE_ENCODER, enc_output_dim=VPTP.ENC_OUTPUT_DIM,
+                          num_encoder_linear_layers=VPTP.NUM_ENC_LIN_LAYERS, load_encoder=False,
+                          retrain_encoder=True)
+        if print_architecture:
+            print(srpt.ppo_agent.actor)
+            print(srpt.ppo_agent.critic)
+        srpt.train()
+
+    if test_scratch_ppo:
+        srpte = PPOTester(task_name=f"{VPTEP.TASK_NAME}_SCRATCH", env_name=VPTEP.ENV_NAME, state_dim=VPTEP.STATE_DIM,
+                          action_dict=VPTEP.ACT_DICT, resolution=VPTEP.RESOLUTION, max_ep_len=VPTEP.MAX_EP_LEN,
+                          obj_size=VPTEP.OBJ_SIZE, speed=VPTEP.SPEED, num_games=VPTEP.NUM_GAMES,
+                          avg_window=VPTEP.AVG_WINDOW, show=VPTEP.SHOW, figure_file="plots/visual_scratch_ppo_test.png",
+                          use_encoder=VPTEP.USE_ENCODER, enc_output_dim=VPTEP.ENC_OUTPUT_DIM,
+                          num_encoder_linear_layers=VPTEP.NUM_ENC_LIN_LAYERS)
+        if print_architecture:
+            print(srpte.actor)
+        srpte.test()
+
     if train_static_rewirl_ppo:
         srpt = PPOTrainer(task_name=VPTP.TASK_NAME, env_name=VPTP.ENV_NAME, state_dim=VPTP.STATE_DIM,
                           action_dict=VPTP.ACT_DICT, resolution=VPTP.RESOLUTION, max_ep_len=VPTP.MAX_EP_LEN,
@@ -338,3 +366,30 @@ if __name__ == "__main__":
         if print_architecture:
             print(srpte.actor)
         srpte.test()
+
+    if train_finetune_rewirl_ppo:
+        frpt = PPOTrainer(task_name=f"{VPTP.TASK_NAME}_FINETUNE", env_name=VPTP.ENV_NAME, state_dim=VPTP.STATE_DIM,
+                          action_dict=VPTP.ACT_DICT, resolution=VPTP.RESOLUTION, max_ep_len=VPTP.MAX_EP_LEN,
+                          obj_size=VPTP.OBJ_SIZE, speed=VPTP.SPEED, num_games=VPTP.NUM_GAMES,
+                          batch_size=VPTP.BATCH_SIZE, epochs=VPTP.EPOCHS, learn_trigger=VPTP.LEARN_TRIGGER,
+                          avg_window=VPTP.AVG_WINDOW, show_freq=VPTP.SHOW_FREQ,
+                          figure_file="plots/visual_finetune_ppo.png",
+                          use_encoder=VPTP.USE_ENCODER, enc_output_dim=VPTP.ENC_OUTPUT_DIM,
+                          num_encoder_linear_layers=VPTP.NUM_ENC_LIN_LAYERS, load_encoder=VPTP.LOAD_ENC,
+                          retrain_encoder=True)
+        if print_architecture:
+            print(frpt.ppo_agent.actor)
+            print(frpt.ppo_agent.critic)
+        frpt.train()
+
+    if test_finetune_rewirl_ppo:
+        frpte = PPOTester(task_name=f"{VPTEP.TASK_NAME}_FINETUNE", env_name=VPTEP.ENV_NAME, state_dim=VPTEP.STATE_DIM,
+                          action_dict=VPTEP.ACT_DICT, resolution=VPTEP.RESOLUTION, max_ep_len=VPTEP.MAX_EP_LEN,
+                          obj_size=VPTEP.OBJ_SIZE, speed=VPTEP.SPEED, num_games=VPTEP.NUM_GAMES,
+                          avg_window=VPTEP.AVG_WINDOW, show=VPTEP.SHOW,
+                          figure_file="plots/visual_finetune_ppo_test.png",
+                          use_encoder=VPTEP.USE_ENCODER, enc_output_dim=VPTEP.ENC_OUTPUT_DIM,
+                          num_encoder_linear_layers=VPTEP.NUM_ENC_LIN_LAYERS)
+        if print_architecture:
+            print(frpte.actor)
+        frpte.test()

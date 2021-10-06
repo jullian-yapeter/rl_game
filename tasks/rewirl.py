@@ -165,7 +165,18 @@ class RewirlTester():
 
 
 if __name__ == "__main__":
-    rtr = RewirlTrainer()
-    rtr.train()
-    # rte = RewirlTester()
-    # rte.test()
+    print_architecture = True
+    train_rewirl = False
+    test_rewirl = False
+
+    if train_rewirl:
+        rtr = RewirlTrainer()
+        if print_architecture:
+            print(rtr.ra)
+        rtr.train()
+
+    if test_rewirl:
+        rte = RewirlTester()
+        if print_architecture:
+            print(rte.ra)
+        rte.test()
