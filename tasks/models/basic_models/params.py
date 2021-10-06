@@ -35,6 +35,26 @@ class U_LINEAR_PARAMS:
         return linear_layers
 
 
+# Linear module default params
+class D_LINEAR_PARAMS:
+    LEARNING_RATE = 0.001
+    OUTPUT_DIM = 4096
+    CHKPT_FILE = "d_linear"
+    ACTIVATION = nn.ReLU()
+
+    @staticmethod
+    def generate_doubling_linear_layers(input_dim, output_dim):
+        out_dim = input_dim
+        linear_layers = []
+        while out_dim < output_dim:
+            linear_layer = {}
+            linear_layer["in_dim"] = out_dim
+            linear_layer["out_dim"] = out_dim * 2
+            linear_layers.append(linear_layer)
+            out_dim *= 2
+        return linear_layers
+
+
 # Convolutional encoder default params
 class CONV_ENCODER_PARAMS:
     LEARNING_RATE = 0.001

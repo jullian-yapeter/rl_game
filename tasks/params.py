@@ -17,6 +17,19 @@ class REWIRL_AGENT_PARAMS:
     CHKPT_FILE = "rewirl"
 
 
+# Reward-Induced Representation RL (Rewirl) Autoencoder default params
+class REWIRL_AUTOENCODER_PARAMS:
+    LEARNING_RATE = 0.001
+    ENC_OUTPUT_DIM = 64
+    HEAD_HIDDEN_DIM = 32
+    HEAD_OUTPUT_DIM = 1
+    NUM_ENC_LIN_LAYERS = 1
+    NUM_HEAD_LAYERS = 3
+    RETRAIN_ENC = False
+    LOAD_ENC = True
+    CHKPT_FILE = "rewirl_autoencoder"
+
+
 # Rewirl trainer default params
 class REWIRL_TRAINER_PARAMS:
     TASK_NAME = "rewirl"
@@ -35,12 +48,47 @@ class REWIRL_TRAINER_PARAMS:
 class REWIRL_TESTER_PARAMS:
     REWARD_TYPES = [AgentXReward, AgentYReward, TargetXReward, TargetYReward]
     IM_DIM = 64
+    SEQ_LEN = 30
+    MAX_SPEED = 0.05
+    OBJ_SIZE = 0.2
+    NUM_DISTRACTORS = 0
+    TRIALS = 1
+    FIG_FILE = "plots/rewirl_test.png"
+
+
+# Rewirl trainer default params
+class REWIRL_DECODER_TRAINER_PARAMS:
+    TASK_NAME = "rewirl_decoder"
+    SHOW = True
+    IM_DIM = 64
+    SEQ_LEN = 256
+    MAX_SPEED = 0.05
+    OBJ_SIZE = 0.2
+    NUM_DISTRACTORS = 0
+    TRIALS = 5000
+    WINDOW = 10
+    ENC_OUTPUT_DIM = 64
+    NUM_ENC_LIN_LAYERS = 1
+    LOAD_ENC = True
+    RETRAIN_ENC = False
+    FIG_FILE = "plots/rewirl_decoder.png"
+
+
+# Rewirl trainer default params
+class REWIRL_DECODER_TESTER_PARAMS:
+    TASK_NAME = "rewirl_decoder"
+    SHOW = False
+    IM_DIM = 64
     SEQ_LEN = 10
     MAX_SPEED = 0.05
     OBJ_SIZE = 0.2
     NUM_DISTRACTORS = 0
     TRIALS = 10
-    FIG_FILE = "plots/rewirl_test.png"
+    WINDOW = 10
+    ENC_OUTPUT_DIM = 64
+    NUM_ENC_LIN_LAYERS = 1
+    LOAD_ENC = True
+    FIG_FILE = "plots/rewirl_decoder_tester.png"
 
 
 # State-based PPO agent default params
@@ -88,7 +136,7 @@ class STATE_PPO_TRAINER_PARAMS:
 class STATE_PPO_TESTER_PARAMS:
     TASK_NAME = "PPO"
     ENV_NAME = 'envs.sprites.sprites_env:SpritesState-v0'
-    NUM_GAMES = 100
+    NUM_GAMES = 1
     STATE_DIM = 4
     ACT_DICT = [[1, 0], [0, -1], [-1, 0], [0, 1]]
     RESOLUTION = 64
@@ -96,7 +144,7 @@ class STATE_PPO_TESTER_PARAMS:
     OBJ_SIZE = 0.2
     SPEED = 0.05
     AVG_WINDOW = 10
-    SHOW = False
+    SHOW = True
     USE_ENCODER = False
     ENC_OUTPUT_DIM = None
     NUM_ENC_LIN_LAYERS = None
@@ -142,7 +190,7 @@ class VISUAL_PPO_TRAINER_PARAMS:
 class VISUAL_PPO_TESTER_PARAMS:
     TASK_NAME = "VIS_PPO"
     ENV_NAME = 'envs.sprites.sprites_env:Sprites-v0'
-    NUM_GAMES = 100
+    NUM_GAMES = 1
     ACT_DICT = [[1, 0], [0, -1], [-1, 0], [0, 1]]
     RESOLUTION = 64
     STATE_DIM = (1, 1, RESOLUTION, RESOLUTION)

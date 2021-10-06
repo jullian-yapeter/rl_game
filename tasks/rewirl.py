@@ -1,15 +1,21 @@
 import os
 
 from envs.sprites.sprites_datagen.moving_sprites import DistractorTemplateMovingSpritesGenerator
+from envs.sprites.sprites_datagen.rewards import ZeroReward
 from utils.general_utils import AttrDict
 from params import COMMON_PARAMS as CP
 from params import REWIRL_AGENT_PARAMS as RAP
+from params import REWIRL_AUTOENCODER_PARAMS as RAEP
 from params import REWIRL_TRAINER_PARAMS as RTP
 from params import REWIRL_TESTER_PARAMS as RTEP
+from params import REWIRL_DECODER_TRAINER_PARAMS as RDTP
+from params import REWIRL_DECODER_TESTER_PARAMS as RDTEP
 from models.im_encoder import ImageEncoderNetwork
+from models.im_decoder import ImageDecoderNetwork
 from models.reward_head import RewardHeadNetwork
 from utils.model_utils import shuffled_indices, save_checkpoint, load_checkpoint
 
+import cv2
 import numpy as np
 import torch as T
 import torch.nn as nn
@@ -42,6 +48,41 @@ class RewirlAgent(nn.Module):
     def forward(self, x, rew_name):
         features = self.im_enc(x.to(self.device))
         out = self.rew_heads[rew_name](features)
+        return out
+
+
+class RewirlAutoencoder(nn.Module):
+    def __init__(self, im_dim, enc_output_dim=RAEP.ENC_OUTPUT_DIM, retrain_encoder=RAEP.RETRAIN_ENC,
+                 load_encoder=RAEP.LOAD_ENC, num_encoder_linear_layers=RAEP.NUM_ENC_LIN_LAYERS,
+                 alpha=RAEP.LEARNING_RATE, chkpt_dir=CP.CHECKPOINT_DIR, chkpt_filename=RAEP.CHKPT_FILE):
+
+        super(RewirlAutoencoder, self).__init__()
+        self.encoder = ImageEncoderNetwork((1, 1, im_dim, im_dim), output_dim=enc_output_dim,
+                                           num_linear_layers=num_encoder_linear_layers)
+        self.decoder = ImageDecoderNetwork(enc_output_dim, output_dim=im_dim * im_dim,
+                                           output_im_dims=(1, im_dim, im_dim))
+
+        self.retrain_encoder = retrain_encoder
+        if load_encoder:
+            load_checkpoint(self.encoder, task_name="rewirl")
+        if not self.retrain_encoder:
+            self.encoder.parameters()
+            for param in self.encoder.parameters():
+                param.requires_grad = False
+            self.encoder.eval()
+
+        self.checkpoint_file = os.path.join(chkpt_dir, chkpt_filename)
+        self.optimizer = optim.Adam(self.parameters(), lr=alpha)
+        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+        self.to(self.device)
+
+    def forward(self, x):
+        if not self.retrain_encoder:
+            with T.no_grad():
+                features = self.encoder(x.to(self.device))
+        else:
+            features = self.encoder(x.to(self.device))
+        out = self.decoder(features)
         return out
 
 
@@ -139,7 +180,7 @@ class RewirlTester():
 
     def test(self):
         losses = []
-        for i in range(self.num_trials):
+        for _ in range(self.num_trials):
             traj = self.gen.gen_trajectory()
             images = RewirlTrainer._preprocess_images(traj.images)
             test_data = T.tensor(images)
@@ -148,8 +189,8 @@ class RewirlTester():
                 rewards = traj.rewards.get(reward_name)
                 test_label = T.tensor(rewards)
                 pred_label = self.ra(test_data, reward_name)
-                print(f"test: {test_label}")
-                print(f"pred: {pred_label}")
+                # print(f"test: {test_label}")
+                # print(f"pred: {T.squeeze(pred_label)}")
                 loss = self.loss_fn(T.squeeze(pred_label).to(self.device), test_label.to(self.device), reduction="sum")
                 total_loss += loss
             losses.append(total_loss.item())
@@ -164,10 +205,151 @@ class RewirlTester():
         return images[:, None].astype(np.float32) / (255./2) - 1.0
 
 
+class RewirlDecoderTrainer():
+    def __init__(self, task_name=RDTP.TASK_NAME,
+                 im_dim=RDTP.IM_DIM, seq_len=RDTP.SEQ_LEN, max_speed=RDTP.MAX_SPEED, obj_size=RDTP.OBJ_SIZE,
+                 num_distractors=RDTP.NUM_DISTRACTORS, window=RDTP.WINDOW,
+                 enc_output_dim=RDTP.ENC_OUTPUT_DIM, num_encoder_linear_layers=RDTP.NUM_ENC_LIN_LAYERS,
+                 load_encoder=RDTP.LOAD_ENC, retrain_encoder=RDTP.RETRAIN_ENC,
+                 num_trials=RDTP.TRIALS, figure_file=RDTP.FIG_FILE):
+        self.task_name = task_name
+        self.window = window
+        self.num_trials = num_trials
+        self.im_dims = (1, 1, im_dim, im_dim)
+        self.spec = AttrDict(
+            resolution=im_dim,
+            max_seq_len=seq_len,
+            max_speed=max_speed,
+            obj_size=obj_size,
+            shapes_per_traj=2 + num_distractors,      # number of shapes per trajectory
+            rewards=[ZeroReward],
+        )
+        self.gen = DistractorTemplateMovingSpritesGenerator(self.spec)
+
+        self.retrain_encoder = retrain_encoder
+        self.autoencoder = RewirlAutoencoder(im_dim, enc_output_dim=enc_output_dim,
+                                             retrain_encoder=self.retrain_encoder, load_encoder=load_encoder,
+                                             num_encoder_linear_layers=num_encoder_linear_layers)
+
+        self.loss_fn = nn.BCELoss(reduction="sum")
+        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+        self.figure_file = figure_file
+
+    def train(self):
+        best_loss = float('inf')
+        losses = []
+        for i in range(self.num_trials):
+            traj = self.gen.gen_trajectory()
+            test_label = T.tensor(traj.images / 255., dtype=T.float)
+            preproc_images = RewirlTrainer._preprocess_images(traj.images)
+            test_data = T.tensor(preproc_images, dtype=T.float)
+            pred_label = self.autoencoder(test_data)
+            # print(test_label)
+            # print(pred_label)
+            loss = self.loss_fn(T.squeeze(pred_label).to(self.device), test_label.to(self.device))
+            losses.append(loss.item())
+            avg_loss = np.mean(losses[-self.window:])
+            if avg_loss < best_loss:
+                self.save_models()
+                best_loss = avg_loss
+            if i % self.window == 0:
+                print(f"iter = {i}, loss = {loss.item()}, avg_loss = {avg_loss}")
+                plt.plot(losses)
+                plt.title("RewIRL Decoder losses")
+                plt.savefig(self.figure_file)
+            self.autoencoder.optimizer.zero_grad()
+            loss.backward()
+            self.autoencoder.optimizer.step()
+        print(f"average loss:{np.mean(losses)}")
+
+    def save_models(self):
+        print("...saving models...")
+        save_checkpoint(self.autoencoder)
+        if self.retrain_encoder:
+            save_checkpoint(self.autoencoder.encoder, task_name=self.task_name)
+        save_checkpoint(self.autoencoder.decoder, task_name=self.task_name)
+
+    @staticmethod
+    # Go from (N, H, W) of [0, 255] to (N, 1, H, W) of [-1, 1]
+    def _preprocess_images(images):
+        return images[:, None].astype(np.float32) / (255./2) - 1.0
+
+
+class RewirlDecoderTester():
+    def __init__(self, task_name=RDTEP.TASK_NAME, show=RDTEP.SHOW,
+                 im_dim=RDTEP.IM_DIM, seq_len=RDTEP.SEQ_LEN, max_speed=RDTEP.MAX_SPEED, obj_size=RDTEP.OBJ_SIZE,
+                 num_distractors=RDTEP.NUM_DISTRACTORS, window=RDTEP.WINDOW,
+                 enc_output_dim=RDTEP.ENC_OUTPUT_DIM, num_encoder_linear_layers=RDTEP.NUM_ENC_LIN_LAYERS,
+                 load_encoder=RDTEP.LOAD_ENC, num_trials=RDTEP.TRIALS, figure_file=RDTEP.FIG_FILE):
+        self.task_name = task_name
+        self.show = show
+        self.window = window
+        self.num_trials = num_trials
+        self.im_dims = (1, 1, im_dim, im_dim)
+        self.spec = AttrDict(
+            resolution=im_dim,
+            max_seq_len=seq_len,
+            max_speed=max_speed,
+            obj_size=obj_size,
+            shapes_per_traj=2 + num_distractors,      # number of shapes per trajectory
+            rewards=[ZeroReward],
+        )
+        self.gen = DistractorTemplateMovingSpritesGenerator(self.spec)
+
+        self.autoencoder = RewirlAutoencoder(im_dim, enc_output_dim=enc_output_dim,
+                                             retrain_encoder=False, load_encoder=load_encoder,
+                                             num_encoder_linear_layers=num_encoder_linear_layers)
+        load_checkpoint(self.autoencoder)
+
+        self.loss_fn = nn.BCELoss(reduction="sum")
+        self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
+        self.figure_file = figure_file
+
+    def test(self):
+        losses = []
+        for i in range(self.num_trials):
+            traj = self.gen.gen_trajectory()
+            for im in traj.images:
+                print(np.max(im))
+                print(im.shape)
+                test_label = T.tensor(im / 255., dtype=T.float)
+                preproc_image = RewirlTrainer._preprocess_images(im[None])
+                print(preproc_image.shape)
+                test_data = T.tensor(preproc_image, dtype=T.float)
+                pred_label = T.squeeze(self.autoencoder(test_data))
+                print(pred_label.shape)
+                # print(test_label)
+                # print(pred_label)
+                loss = self.loss_fn(pred_label.to(self.device), test_label.to(self.device))
+                losses.append(loss.item())
+                if self.show:
+                    cv2.imshow(self.task_name, im[:, :, None].repeat(3, axis=2).astype(np.float32))
+                    cv2.imshow(self.task_name+"_pred",
+                               pred_label.detach().numpy()[:, :, None].repeat(3, axis=2).astype(np.float32))
+                    cv2.waitKey(0)
+                avg_loss = np.mean(losses[-self.window:])
+                if i % self.window == 0:
+                    print(f"iter = {i}, loss = {loss.item()}, avg_loss = {avg_loss}")
+                    plt.plot(losses)
+                    plt.title("RewIRL Decoder losses")
+                    plt.savefig(self.figure_file)
+                self.autoencoder.optimizer.zero_grad()
+                loss.backward()
+                self.autoencoder.optimizer.step()
+        print(f"average loss:{np.mean(losses)}")
+
+    @staticmethod
+    # Go from (N, H, W) of [0, 255] to (N, 1, H, W) of [-1, 1]
+    def _preprocess_images(images):
+        return images[:, None].astype(np.float32) / (255./2) - 1.0
+
+
 if __name__ == "__main__":
     print_architecture = True
     train_rewirl = False
     test_rewirl = False
+    train_rewirl_decoder = True
+    test_rewirl_decoder = False
 
     if train_rewirl:
         rtr = RewirlTrainer()
@@ -180,3 +362,15 @@ if __name__ == "__main__":
         if print_architecture:
             print(rte.ra)
         rte.test()
+
+    if train_rewirl_decoder:
+        rdt = RewirlDecoderTrainer()
+        if print_architecture:
+            print(rdt)
+        rdt.train()
+
+    if test_rewirl_decoder:
+        rdte = RewirlDecoderTester()
+        if print_architecture:
+            print(rdte)
+        rdte.test()

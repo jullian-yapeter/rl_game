@@ -15,6 +15,16 @@ class IM_ENCODER_PARAMS:
     CHKPT_FILE = "im_encoder"
 
 
+# Image decoder default params
+class IM_DECODER_PARAMS:
+    LEARNING_RATE = 0.001
+    IN_ACTIVATION = nn.ReLU()
+    OUT_ACTIVATION = nn.Sigmoid()
+    OUTPUT_DIM = 4096
+    OUTPUT_IM_DIMS = (1, 64, 64)
+    CHKPT_FILE = "im_decoder"
+
+
 # Reward head default params
 class R_HEAD_PARAMS:
     LEARNING_RATE = 0.001

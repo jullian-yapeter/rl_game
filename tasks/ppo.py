@@ -285,7 +285,7 @@ if __name__ == "__main__":
     print_architecture = True
     train_state_ppo = False
     test_state_ppo = False
-    train_scratch_ppo = True
+    train_scratch_ppo = False
     test_scratch_ppo = False
     train_static_rewirl_ppo = False
     test_static_rewirl_ppo = False
