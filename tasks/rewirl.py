@@ -310,14 +310,10 @@ class RewirlDecoderTester():
         for i in range(self.num_trials):
             traj = self.gen.gen_trajectory()
             for im in traj.images:
-                print(np.max(im))
-                print(im.shape)
                 test_label = T.tensor(im / 255., dtype=T.float)
                 preproc_image = RewirlTrainer._preprocess_images(im[None])
-                print(preproc_image.shape)
                 test_data = T.tensor(preproc_image, dtype=T.float)
                 pred_label = T.squeeze(self.autoencoder(test_data))
-                print(pred_label.shape)
                 # print(test_label)
                 # print(pred_label)
                 loss = self.loss_fn(pred_label.to(self.device), test_label.to(self.device))
@@ -348,8 +344,8 @@ if __name__ == "__main__":
     print_architecture = True
     train_rewirl = False
     test_rewirl = False
-    train_rewirl_decoder = True
-    test_rewirl_decoder = False
+    train_rewirl_decoder = False
+    test_rewirl_decoder = True
 
     if train_rewirl:
         rtr = RewirlTrainer()

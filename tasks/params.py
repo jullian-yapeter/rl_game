@@ -77,13 +77,13 @@ class REWIRL_DECODER_TRAINER_PARAMS:
 # Rewirl trainer default params
 class REWIRL_DECODER_TESTER_PARAMS:
     TASK_NAME = "rewirl_decoder"
-    SHOW = False
+    SHOW = True
     IM_DIM = 64
     SEQ_LEN = 10
     MAX_SPEED = 0.05
     OBJ_SIZE = 0.2
     NUM_DISTRACTORS = 0
-    TRIALS = 10
+    TRIALS = 100
     WINDOW = 10
     ENC_OUTPUT_DIM = 64
     NUM_ENC_LIN_LAYERS = 1
