@@ -37,7 +37,7 @@ class REWIRL_TRAINER_PARAMS:
     IM_DIM = 64
     MAX_SPEED = 0.05
     OBJ_SIZE = 0.2
-    NUM_DISTRACTORS = 0
+    NUM_DISTRACTORS = 1
     EPOCHS = 20000
     BATCH_SIZE = 30
     WINDOW = 10
@@ -52,7 +52,7 @@ class REWIRL_TESTER_PARAMS:
     MAX_SPEED = 0.05
     OBJ_SIZE = 0.2
     NUM_DISTRACTORS = 0
-    TRIALS = 1
+    TRIALS = 1000
     FIG_FILE = "plots/rewirl_test.png"
 
 
@@ -110,9 +110,9 @@ class STATE_PPO_PARAMS:
 # State-based PPO trainer default params
 class STATE_PPO_TRAINER_PARAMS:
     TASK_NAME = "PPO"
-    ENV_NAME = 'envs.sprites.sprites_env:SpritesState-v0'
+    ENV_NAME = 'envs.sprites.sprites_env:SpritesState-v1'
     NUM_GAMES = 3000
-    STATE_DIM = 4
+    STATE_DIM = 6
     ACT_DICT = [[1, 0], [0, -1], [-1, 0], [0, 1]]
     RESOLUTION = 64
     MAX_EP_LEN = 2049
@@ -135,9 +135,9 @@ class STATE_PPO_TRAINER_PARAMS:
 # State-based PPO tester default params
 class STATE_PPO_TESTER_PARAMS:
     TASK_NAME = "PPO"
-    ENV_NAME = 'envs.sprites.sprites_env:SpritesState-v0'
+    ENV_NAME = 'envs.sprites.sprites_env:SpritesState-v1'
     NUM_GAMES = 1
-    STATE_DIM = 4
+    STATE_DIM = 6
     ACT_DICT = [[1, 0], [0, -1], [-1, 0], [0, 1]]
     RESOLUTION = 64
     MAX_EP_LEN = 2049
@@ -165,8 +165,8 @@ class VISUAL_PPO_PARAMS:
 # Visual-based PPO trainer default params
 class VISUAL_PPO_TRAINER_PARAMS:
     TASK_NAME = "VIS_PPO"
-    ENV_NAME = 'envs.sprites.sprites_env:Sprites-v0'
-    NUM_GAMES = 3000
+    ENV_NAME = 'envs.sprites.sprites_env:Sprites-v1'
+    NUM_GAMES = 500
     RESOLUTION = 64
     STATE_DIM = (1, 1, RESOLUTION, RESOLUTION)
     ACT_DICT = [[1, 0], [0, -1], [-1, 0], [0, 1]]
@@ -189,7 +189,7 @@ class VISUAL_PPO_TRAINER_PARAMS:
 # Visual-based PPO tester default params
 class VISUAL_PPO_TESTER_PARAMS:
     TASK_NAME = "VIS_PPO"
-    ENV_NAME = 'envs.sprites.sprites_env:Sprites-v0'
+    ENV_NAME = 'envs.sprites.sprites_env:Sprites-v1'
     NUM_GAMES = 1
     ACT_DICT = [[1, 0], [0, -1], [-1, 0], [0, 1]]
     RESOLUTION = 64

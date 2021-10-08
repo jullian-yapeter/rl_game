@@ -343,9 +343,9 @@ class RewirlDecoderTester():
 if __name__ == "__main__":
     print_architecture = True
     train_rewirl = False
-    test_rewirl = False
+    test_rewirl = True
     train_rewirl_decoder = False
-    test_rewirl_decoder = True
+    test_rewirl_decoder = False
 
     if train_rewirl:
         rtr = RewirlTrainer()
