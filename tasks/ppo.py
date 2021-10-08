@@ -279,18 +279,19 @@ class PPOTester():
             print(f"episode: {i}, score: {score}, avg score: {avg_score}")
             plot_learning_curve([i+1 for i in range(len(score_history))], score_history,
                                 self.avg_window, self.figure_file)
+        print(f"average score: {np.mean(score_history)}")
 
 
 if __name__ == "__main__":
     print_architecture = True
     train_state_ppo = False
-    test_state_ppo = False
+    test_state_ppo = True
     train_scratch_ppo = False
-    test_scratch_ppo = False
+    test_scratch_ppo = True
     train_static_rewirl_ppo = False
-    test_static_rewirl_ppo = False
+    test_static_rewirl_ppo = True
     train_finetune_rewirl_ppo = False
-    test_finetune_rewirl_ppo = False
+    test_finetune_rewirl_ppo = True
 
     if train_state_ppo:
         spt = PPOTrainer(task_name=SPTP.TASK_NAME, env_name=SPTP.ENV_NAME, state_dim=SPTP.STATE_DIM,
